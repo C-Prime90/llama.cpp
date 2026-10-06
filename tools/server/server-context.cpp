@@ -998,6 +998,10 @@ private:
 
     bool add_bos_token = true;
 
+    // --context-shift was requested: oversized prompts are truncated. this is kept separately from
+    // params_base.ctx_shift, which is disabled when the memory cannot shift (truncation does not need it)
+    bool truncate_prompt = false;
+
     int32_t n_ctx; // total context for all clients / slots
 
     // set to llama_model_n_swa(model)
@@ -1112,6 +1116,7 @@ private:
         const bool is_resume = sleeping;
 
         params_base = params;
+        truncate_prompt = params.ctx_shift;
         const auto output_limits = server_output_limits(params_base);
         params_base.n_outputs_max = output_limits.total;
         params_base.n_outputs_max_per_seq = output_limits.per_seq;
@@ -1858,7 +1863,7 @@ private:
         // if context shift is enabled and the prompt is larger than the context, truncate the middle
         // and keep the first n_keep tokens; otherwise the request is rejected in update_slots()
         // decision tasks are not truncated: they read outputs at absolute prompt positions
-        if (params_base.ctx_shift && !mctx && task.type != SERVER_TASK_TYPE_DECISION && task.n_tokens() >= slot.n_ctx) {
+        if (truncate_prompt && !mctx && task.type != SERVER_TASK_TYPE_DECISION && task.n_tokens() >= slot.n_ctx) {
             int n_keep = task.params.n_keep < 0 ? task.n_tokens() : task.params.n_keep;
 
             // keep the BOS token, same as the context shift in pre_decode()
