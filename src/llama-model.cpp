@@ -1887,7 +1887,8 @@ bool llama_model_base::load_tensors(llama_model_loader & ml) {
             if (buf == nullptr) {
                 throw std::runtime_error(format("unable to allocate %s buffer", ggml_backend_buft_name(buft)));
             }
-            if (use_mlock && ggml_backend_buffer_is_host(buf)) {
+            // the no_alloc dummy buffer (used by --fit to measure memory) has no base address to lock
+            if (use_mlock && ggml_backend_buffer_is_host(buf) && ggml_backend_buffer_get_base(buf) != nullptr) {
                 pimpl->mlock_bufs.emplace_back(new llama_mlock);
                 auto & mlock_buf = pimpl->mlock_bufs.back();
                 mlock_buf->init   (ggml_backend_buffer_get_base(buf));
