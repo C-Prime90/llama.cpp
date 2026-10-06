@@ -1860,6 +1860,12 @@ private:
         // decision tasks are not truncated: they read outputs at absolute prompt positions
         if (params_base.ctx_shift && !mctx && task.type != SERVER_TASK_TYPE_DECISION && task.n_tokens() >= slot.n_ctx) {
             int n_keep = task.params.n_keep < 0 ? task.n_tokens() : task.params.n_keep;
+
+            // keep the BOS token, same as the context shift in pre_decode()
+            if (add_bos_token) {
+                n_keep += 1;
+            }
+
             n_keep = std::min(slot.n_ctx - 4, n_keep);
 
             const int n_left        = slot.n_ctx - n_keep;
